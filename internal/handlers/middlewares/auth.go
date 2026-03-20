@@ -77,6 +77,5 @@ func getUserIdWithToken(w http.ResponseWriter, r *http.Request, secret string) (
 
 func UserIdFromContext(ctx context.Context) (int, bool) {
 	id, ok := ctx.Value(userIdCtx).(int)
-	log.Printf("%v", id)
 	return id, ok
 }

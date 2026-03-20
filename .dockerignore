@@ -1,0 +1,8 @@
+LICENSE
+README.md
+.gitignore
+.git
+schema.sql
+sqlc.yaml
+docker-compose.dev.yml
+.env
