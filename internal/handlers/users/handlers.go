@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -10,22 +11,24 @@ import (
 	"github.com/lorsanstand/Aether-go/pkg/respond"
 )
 
+type UserStore interface {
+	GetUserById(ctx context.Context, id int32) (gen.User, error)
+}
+
 type UserHandler struct {
-	queries *gen.Queries
+	queries UserStore
 	respond.Respond
 }
 
-type User struct {
-	User string `json:"user"`
-	Pass string `json:"Password"`
-}
-
-func NewUserHandler(queries *gen.Queries) *UserHandler {
+func NewUserHandler(queries UserStore) *UserHandler {
 	return &UserHandler{queries: queries}
 }
 
 func (u *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 	user := userFromContext(r.Context())
+	if user.Username == "" {
+		http.Error(w, "User unauthorized", http.StatusUnauthorized)
+	}
 	u.RespondJSON(w, http.StatusOK, user)
 }
 

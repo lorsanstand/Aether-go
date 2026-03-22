@@ -1,9 +1,12 @@
 package middlewares
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	slogctx "github.com/veqryn/slog-context"
 )
 
 type statusRecorder struct {
@@ -18,22 +21,35 @@ func (r *statusRecorder) WriteHeader(status int) {
 
 func LogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("start: %v %v", r.Method, r.URL)
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.NewString()
+		}
+		w.Header().Set("X-Request-ID", requestID)
+
+		ctx := slogctx.Append(r.Context(), "request_id", requestID)
+		r = r.WithContext(ctx)
 
 		recorder := &statusRecorder{
 			ResponseWriter: w,
 			Status:         http.StatusOK,
 		}
+
 		start := time.Now()
+
+		slog.InfoContext(r.Context(), "http request started", "method", r.Method, "path", r.URL.Path)
 
 		next.ServeHTTP(recorder, r)
 
-		duration := time.Since(start)
-		log.Printf("end: %v, %v, status: %v time: %d.%d ms",
-			r.Method,
-			r.URL,
+		slog.InfoContext(
+			r.Context(),
+			"http request finished",
+			"method",
+			r.Method, "path",
+			r.URL.Path, "status",
 			recorder.Status,
-			duration.Milliseconds(),
-			duration.Microseconds())
+			"time",
+			time.Since(start),
+		)
 	})
 }

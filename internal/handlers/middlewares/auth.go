@@ -3,30 +3,35 @@ package middlewares
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	slogctx "github.com/veqryn/slog-context"
 )
 
 const authPrefix = "Bearer "
 
 type ctxKey string
 
-const userIdCtx ctxKey = "UserId"
+const userIDCtx ctxKey = "UserId"
 
 func GetUserIdMiddleware(next http.Handler, secret string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		userId, ok := getUserIdWithToken(w, r, secret)
+		userID, ok := getUserIdWithToken(w, r, secret)
 		if !ok {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		r = r.WithContext(context.WithValue(r.Context(), userIdCtx, userId))
+		ctx := r.Context()
+		ctx = slogctx.Append(ctx, "user_id", userID)
+
+		r = r.WithContext(ctx)
+		r = r.WithContext(context.WithValue(r.Context(), userIDCtx, userID))
 
 		next.ServeHTTP(w, r)
 	})
@@ -36,7 +41,7 @@ func getUserIdWithToken(w http.ResponseWriter, r *http.Request, secret string) (
 	tokenCookie, err := r.Cookie("access_token")
 
 	if err != nil || !strings.HasPrefix(tokenCookie.Value, authPrefix) {
-		log.Printf("Failed get token: %v", err)
+		slog.Debug("failed get token", "error", err)
 		return 0, false
 	}
 
@@ -51,24 +56,24 @@ func getUserIdWithToken(w http.ResponseWriter, r *http.Request, secret string) (
 	})
 
 	if err != nil || !token.Valid {
-		log.Printf("Invalid token: %v", err)
+		slog.Warn("invalid token", "error", err)
 		return 0, false
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		log.Printf("Failed token claims")
+		slog.Warn("failed token claims")
 		return 0, false
 	}
 
 	val, ok := claims["sub"].(string)
 	if !ok {
-		log.Printf("Invalid token not found user id")
+		slog.Warn("not found user id in token")
 		return 0, false
 	}
 	id, err := strconv.Atoi(val)
 	if err != nil {
-		log.Printf("Bad user id")
+		slog.Warn("bad user id int token")
 		return 0, false
 	}
 
@@ -76,6 +81,6 @@ func getUserIdWithToken(w http.ResponseWriter, r *http.Request, secret string) (
 }
 
 func UserIdFromContext(ctx context.Context) (int, bool) {
-	id, ok := ctx.Value(userIdCtx).(int)
+	id, ok := ctx.Value(userIDCtx).(int)
 	return id, ok
 }

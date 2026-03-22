@@ -15,7 +15,3 @@ func (r Respond) RespondJSON(w http.ResponseWriter, status int, data any) {
 		json.NewEncoder(w).Encode(data)
 	}
 }
-
-func (r Respond) RespondError(w http.ResponseWriter, status int, message string) {
-	r.RespondJSON(w, status, map[string]string{"detail": message})
-}
