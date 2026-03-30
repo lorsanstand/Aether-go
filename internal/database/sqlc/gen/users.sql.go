@@ -7,7 +7,38 @@ package gen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createUser = `-- name: CreateUser :exec
+INSERT INTO "user" (display_name, username, email, is_active, is_verified, is_superuser, hashed_password)
+VALUES  ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, display_name, username, email, birth_day, description, avatar_url, is_active, is_verified, is_superuser, hashed_password, created_at, updated_at
+`
+
+type CreateUserParams struct {
+	DisplayName    string
+	Username       string
+	Email          string
+	IsActive       bool
+	IsVerified     bool
+	IsSuperuser    bool
+	HashedPassword string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
+	_, err := q.db.Exec(ctx, createUser,
+		arg.DisplayName,
+		arg.Username,
+		arg.Email,
+		arg.IsActive,
+		arg.IsVerified,
+		arg.IsSuperuser,
+		arg.HashedPassword,
+	)
+	return err
+}
 
 const getUserById = `-- name: GetUserById :one
 SELECT id, display_name, username, email, birth_day, description, avatar_url, is_active, is_verified, is_superuser, hashed_password, created_at, updated_at from "user" WHERE id=$1
@@ -32,4 +63,28 @@ func (q *Queries) GetUserById(ctx context.Context, id int32) (User, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :exec
+UPDATE "user" SET display_name= $2, username = $3, birth_day = $4, description = $5
+WHERE id = $1
+`
+
+type UpdateUserParams struct {
+	ID          int32
+	DisplayName string
+	Username    string
+	BirthDay    pgtype.Date
+	Description *string
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.Exec(ctx, updateUser,
+		arg.ID,
+		arg.DisplayName,
+		arg.Username,
+		arg.BirthDay,
+		arg.Description,
+	)
+	return err
 }

@@ -28,3 +28,20 @@ func toTime(pgDate pgtype.Date) time.Time {
 	}
 	return pgDate.Time
 }
+
+func fromUserRequest(RequestUser RequestUserUpdate) gen.UpdateUserParams {
+	return gen.UpdateUserParams{
+		DisplayName: RequestUser.DisplayName,
+		Description: RequestUser.Description,
+		BirthDay:    toPgDate(RequestUser.BirthDay),
+		Username:    RequestUser.Username,
+	}
+}
+
+func toPgDate(time2 time.Time) pgtype.Date {
+	return pgtype.Date{
+		Time:             time2,
+		InfinityModifier: 0,
+		Valid:            true,
+	}
+}
